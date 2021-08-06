@@ -14,50 +14,57 @@
  * limitations under the License.
  */
 
+locals {
+  config_sync_apply_spec_filename          = "${var.cluster_name}_config-sync-apply-spec.yaml"
+  config_sync_apply_spec_template_filename = "${path.module}/templates/config-sync-apply-spec.yml.tpl"
+}
+
 module "enable_acm" {
   source  = "terraform-google-modules/gcloud/google"
   version = "~> 2.0"
 
   platform              = "linux"
   upgrade               = true
-  additional_components = ["alpha"]
+  additional_components = ["beta"]
 
   service_account_key_file = var.service_account_key_file
   create_cmd_entrypoint    = "gcloud"
-  create_cmd_body          = "alpha container hub config-management enable --project ${var.project_id}"
+  create_cmd_body          = "beta container hub config-management enable --project ${var.project_id}"
   destroy_cmd_entrypoint   = "gcloud"
-  destroy_cmd_body         = "alpha container hub config-management disable --force --project ${var.project_id}"
+  destroy_cmd_body         = "beta container hub config-management disable --force --project ${var.project_id}"
 }
 
-module "acm_operator" {
+data "template_file" "config_sync_apply_spec" {
 
-  source = "../k8s-operator-crd-support"
+  template = file(local.config_sync_apply_spec_template_filename)
 
-  cluster_name             = var.cluster_name
-  project_id               = var.project_id
-  location                 = var.location
-  operator_path            = var.operator_path
-  enable_multi_repo        = var.enable_multi_repo
-  sync_repo                = var.sync_repo
-  sync_branch              = var.sync_branch
-  sync_revision            = var.sync_revision
-  policy_dir               = var.policy_dir
-  cluster_endpoint         = var.cluster_endpoint
-  create_ssh_key           = var.create_ssh_key
-  secret_type              = var.secret_type
-  ssh_auth_key             = var.ssh_auth_key
-  enable_policy_controller = var.enable_policy_controller
-  install_template_library = var.install_template_library
-  source_format            = var.source_format
-  hierarchy_controller     = var.hierarchy_controller
-  enable_log_denies        = var.enable_log_denies
+  vars = {
+    config_sync_enabled       = var.config_sync_enabled
+    gcp_service_account_email = var.gcp_service_account_email
+    policy_dir                = var.policy_dir 
+    secret_type               = var.secret_type
+    source_format             = var.source_format
+    sync_branch               = var.sync_branch
+    sync_repo                 = var.sync_repo
+    sync_revision             = var.sync_revision
+    sync_wait                 = var.sync_wait
+  }
+}
+
+resource "local_file" "config_sync_apply_spec" {
+  content  = data.template_file.config_sync_apply_spec.rendered
+  filename = local.config_sync_apply_spec_filename
+}
+
+module "configure_config_sync" {
+  source  = "terraform-google-modules/gcloud/google"
+  version = "~> 2.0"
+
+  platform              = "linux"
+  upgrade               = true
+  additional_components = ["beta"]
+
   service_account_key_file = var.service_account_key_file
-  use_existing_context     = var.use_existing_context
-
-  operator_latest_manifest_url  = "gs://config-management-release/released/latest/config-management-operator.yaml"
-  operator_cr_template_path     = "${path.module}/templates/acm-config.yml.tpl"
-  operator_credential_namespace = "config-management-system"
-  operator_credential_name      = "git-creds"
-
-  rootsync_cr_template_path = "${path.module}/templates/root-sync.yml.tpl"
+  create_cmd_entrypoint    = "gcloud"
+  create_cmd_body          = "beta container hub config-management apply --config=${local_file.config_sync_apply_spec.filename} --membership=${var.cluster_name} --project=${var.project_id}"
 }

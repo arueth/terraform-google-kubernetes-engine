@@ -14,14 +14,38 @@
  * limitations under the License.
  */
 
+variable "cluster_endpoint" {
+  description = "Kubernetes cluster endpoint."
+  type        = string
+}
+
 variable "cluster_name" {
   description = "GCP cluster Name used to reach cluster and which becomes the cluster name in the Config Sync kubernetes custom resource."
   type        = string
 }
 
-variable "project_id" {
-  description = "GCP project_id used to reach cluster."
+variable "config_sync_enabled" {
+  description = "If true, enables Config Sync."
+  type        = bool
+  default     = true
+}
+
+variable "create_ssh_key" {
+  description = "Controls whether a key will be generated for Git authentication"
+  type        = bool
+  default     = true
+}
+
+variable "enable_multi_repo" {
+  description = "Whether to use ACM Config Sync [multi-repo mode](https://cloud.google.com/kubernetes-engine/docs/add-on/config-sync/how-to/multi-repo)."
+  type        = bool
+  default     = true
+}
+
+variable "gcp_service_account_email" {
+  description = "The Google Cloud service account used to annotate the RootSync or RepoSync controller's Kubernetes Service Account. This field is only used when secret_type is gcpserviceaccount."
   type        = string
+  default     = ""
 }
 
 variable "location" {
@@ -35,10 +59,33 @@ variable "operator_path" {
   default     = null
 }
 
-variable "enable_multi_repo" {
-  description = "Whether to use ACM Config Sync [multi-repo mode](https://cloud.google.com/kubernetes-engine/docs/add-on/config-sync/how-to/multi-repo)."
-  type        = bool
-  default     = false
+variable "policy_dir" {
+  description = "Subfolder containing configs in ACM Git repo. If un-set, uses Config Management default."
+  type        = string
+  default     = "."
+}
+
+variable "project_id" {
+  description = "GCP project_id used to reach cluster."
+  type        = string
+}
+
+variable "secret_type" {
+  description = "git authentication secret type, is passed through to ConfigManagement spec.git.secretType. Overriden to value 'ssh' if `create_ssh_key` is true"
+  type        = string
+  default     = "ssh"
+}
+
+variable "source_format" {
+  description = "Configures a non-hierarchical repo if set to 'unstructured'. Uses [ACM defaults](https://cloud.google.com/anthos-config-management/docs/how-to/installing#configuring-config-management-operator) when unset."
+  type        = string
+  default     = "hierarchy"
+}
+
+variable "sync_branch" {
+  description = "ACM repo Git branch. If un-set, uses Config Management default."
+  type        = string
+  default     = "master"
 }
 
 variable "sync_repo" {
@@ -46,39 +93,16 @@ variable "sync_repo" {
   type        = string
 }
 
-variable "sync_branch" {
-  description = "ACM repo Git branch. If un-set, uses Config Management default."
-  type        = string
-  default     = ""
-}
-
 variable "sync_revision" {
-  description = "ACM repo Git revision. If un-set, uses Config Management default."
+  description = "Git revision (tag or hash) to check out."
   type        = string
-  default     = ""
+  default     = "HEAD"
 }
 
-variable "policy_dir" {
-  description = "Subfolder containing configs in ACM Git repo. If un-set, uses Config Management default."
+variable "sync_wait" {
+  description = "Period in seconds between consecutive syncs."
   type        = string
-  default     = ""
-}
-
-variable "cluster_endpoint" {
-  description = "Kubernetes cluster endpoint."
-  type        = string
-}
-
-variable "create_ssh_key" {
-  description = "Controls whether a key will be generated for Git authentication"
-  type        = bool
-  default     = true
-}
-
-variable "secret_type" {
-  description = "git authentication secret type, is passed through to ConfigManagement spec.git.secretType. Overriden to value 'ssh' if `create_ssh_key` is true"
-  type        = string
-  default     = "ssh"
+  default     = "15"
 }
 
 variable "ssh_auth_key" {
@@ -97,12 +121,6 @@ variable "install_template_library" {
   description = "Whether to install the default Policy Controller template library"
   type        = bool
   default     = true
-}
-
-variable "source_format" {
-  description = "Configures a non-hierarchical repo if set to 'unstructured'. Uses [ACM defaults](https://cloud.google.com/anthos-config-management/docs/how-to/installing#configuring-config-management-operator) when unset."
-  type        = string
-  default     = ""
 }
 
 variable "hierarchy_controller" {
